@@ -193,4 +193,196 @@ public class LinkedQueueTest
 
         assertTrue(queue.isEmpty());
     }
+
+    /**
+     * Tests removing the first student from a queue.
+     */
+    @Test
+    public void testRemoveFront() {
+        LinkedQueue<String> queue = new LinkedQueue<String>();
+    
+        queue.enqueue("Liam");
+        queue.enqueue("Luc");
+        queue.enqueue("Tayshaun");
+    
+        assertTrue(queue.remove("Liam"));
+    
+        assertEquals("Luc", queue.peek());
+        assertEquals(
+            Arrays.asList("Luc", "Tayshaun"),
+            queue.toList());
+    }
+    
+    /**
+     * Tests removing a student from the middle
+     * without changing the remaining FIFO order.
+     */
+    @Test
+    public void testRemoveMiddle() {
+        LinkedQueue<String> queue = new LinkedQueue<String>();
+    
+        queue.enqueue("Liam");
+        queue.enqueue("Luc");
+        queue.enqueue("Tayshaun");
+    
+        assertTrue(queue.remove("Luc"));
+    
+        assertEquals(
+            Arrays.asList("Liam", "Tayshaun"),
+            queue.toList());
+    
+        assertEquals("Liam", queue.peek());
+    }
+    
+    /**
+     * Tests removing the tail and then adding
+     * a new student to verify the tail is updated.
+     */
+    @Test
+    public void testRemoveTailAndEnqueue() {
+        LinkedQueue<String> queue = new LinkedQueue<String>();
+    
+        queue.enqueue("Liam");
+        queue.enqueue("Luc");
+        queue.enqueue("Tayshaun");
+    
+        assertTrue(queue.remove("Tayshaun"));
+    
+        queue.enqueue("Sajjad");
+    
+        assertEquals(
+            Arrays.asList("Liam", "Luc", "Sajjad"),
+            queue.toList());
+    }
+    
+    /**
+     * Tests removing the only student and reusing
+     * the queue afterward.
+     */
+    @Test
+    public void testRemoveOnlyStudent() {
+        LinkedQueue<String> queue = new LinkedQueue<String>();
+    
+        queue.enqueue("Liam");
+    
+        assertTrue(queue.remove("Liam"));
+        assertTrue(queue.isEmpty());
+    
+        queue.enqueue("Luc");
+    
+        assertEquals("Luc", queue.peek());
+        assertEquals("Luc", queue.dequeue());
+        assertTrue(queue.isEmpty());
+    }
+    
+    /**
+     * Tests removing a student who is not waiting.
+     * The queue should remain unchanged.
+     */
+    @Test
+    public void testRemoveMissingStudent() {
+        LinkedQueue<String> queue = new LinkedQueue<String>();
+    
+        queue.enqueue("Liam");
+        queue.enqueue("Luc");
+    
+        assertFalse(queue.remove("Unknown"));
+    
+        assertEquals(
+            Arrays.asList("Liam", "Luc"),
+            queue.toList());
+    }
+    
+    /**
+     * Tests attempting to remove an entry
+     * from an empty queue.
+     */
+    @Test
+    public void testRemoveFromEmptyQueue() {
+        LinkedQueue<String> queue = new LinkedQueue<String>();
+    
+        assertFalse(queue.remove("Liam"));
+        assertTrue(queue.isEmpty());
+    }
+    
+    /**
+     * Tests rejecting a null cancellation request
+     * without modifying the queue.
+     */
+    @Test
+    public void testRemoveNull() {
+        LinkedQueue<String> queue = new LinkedQueue<String>();
+    
+        queue.enqueue("Liam");
+    
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> queue.remove(null));
+    
+        assertEquals(
+            Arrays.asList("Liam"),
+            queue.toList());
+    }
+    
+    /**
+     * Tests that interleaved enqueue and dequeue
+     * operations preserve FIFO order.
+     *
+     * This explicitly covers the Deliverable 4
+     * Exceeds requirement.
+     */
+    @Test
+    public void testInterleavedEnqueueDequeue() {
+        LinkedQueue<String> queue = new LinkedQueue<String>();
+    
+        queue.enqueue("Liam");
+        queue.enqueue("Luc");
+    
+        assertEquals("Liam", queue.dequeue());
+    
+        queue.enqueue("Tayshaun");
+    
+        assertEquals("Luc", queue.dequeue());
+    
+        queue.enqueue("Sajjad");
+        queue.enqueue("Alex");
+    
+        assertEquals(
+            Arrays.asList("Tayshaun", "Sajjad", "Alex"),
+            queue.toList());
+    
+        assertEquals("Tayshaun", queue.dequeue());
+        assertEquals("Sajjad", queue.dequeue());
+    
+        queue.enqueue("Jordan");
+    
+        assertEquals(
+            Arrays.asList("Alex", "Jordan"),
+            queue.toList());
+    
+        assertEquals("Alex", queue.dequeue());
+        assertEquals("Jordan", queue.dequeue());
+    
+        assertTrue(queue.isEmpty());
+    }
+    
+    /**
+     * Tests that remove deletes only the first
+     * matching entry when duplicates are present.
+     */
+    @Test
+    public void testRemoveFirstMatchingEntry() {
+        LinkedQueue<String> queue = new LinkedQueue<String>();
+    
+        queue.enqueue("Liam");
+        queue.enqueue("Luc");
+        queue.enqueue("Liam");
+    
+        assertTrue(queue.remove("Liam"));
+    
+        assertEquals(
+            Arrays.asList("Luc", "Liam"),
+            queue.toList());
+    }
+
 }
