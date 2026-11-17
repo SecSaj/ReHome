@@ -609,4 +609,250 @@ public class ReHomeModelTest
 
         return builder.toString();
     }
+    
+    
+    /**
+     * Tests canceling a middle student without changing
+     * FIFO order or resetting the front student's deadline.
+     */
+    @Test
+    public void testCancelMiddlePreservesOrderAndDeadline() {
+        ReHomeModel model = new ReHomeModel(1000L);
+        int id = model.addItem("Lamp", "", "");
+    
+        model.joinWaitlist(id, "Liam", 10000L);
+        model.joinWaitlist(id, "Luc", 10001L);
+        model.joinWaitlist(id, "Tayshaun", 10002L);
+    
+        assertTrue(model.cancelWaitlist(id, "  lUC  ", 10500L));
+    
+        assertEquals(
+            Arrays.asList("Liam", "Tayshaun"),
+            model.getItemSnapshot(id).getWaitingNames());
+    
+        assertEquals("Liam", model.peekNext(id));
+        assertEquals(11000L,
+            model.getItemSnapshot(id).getOfferDeadlineMillis());
+    }
+    
+    /**
+     * Tests canceling the front student.
+     * The next student receives a full new offer window.
+     */
+    @Test
+    public void testCancelFrontRestartsDeadline() {
+        ReHomeModel model = new ReHomeModel(1000L);
+        int id = model.addItem("Lamp", "", "");
+    
+        model.joinWaitlist(id, "Liam", 10000L);
+        model.joinWaitlist(id, "Luc", 10001L);
+    
+        assertTrue(model.cancelWaitlist(id, "Liam", 10999L));
+    
+        assertEquals("Luc", model.peekNext(id));
+        assertEquals(11999L,
+            model.getItemSnapshot(id).getOfferDeadlineMillis());
+    
+        assertEquals(0, model.expireOffers(11000L));
+    }
+    
+    /**
+     * Tests canceling the tail and adding another student.
+     * The current student's deadline must not change.
+     */
+    @Test
+    public void testCancelTailAndRequeue() {
+        ReHomeModel model = new ReHomeModel(1000L);
+        int id = model.addItem("Lamp", "", "");
+    
+        model.joinWaitlist(id, "Liam", 10000L);
+        model.joinWaitlist(id, "Luc", 10001L);
+        model.joinWaitlist(id, "Tayshaun", 10002L);
+    
+        assertTrue(model.cancelWaitlist(
+            id, "Tayshaun", 10400L));
+    
+        assertEquals(11000L,
+            model.getItemSnapshot(id).getOfferDeadlineMillis());
+    
+        model.joinWaitlist(id, "Sajjad", 10500L);
+    
+        assertEquals(
+            Arrays.asList("Liam", "Luc", "Sajjad"),
+            model.getItemSnapshot(id).getWaitingNames());
+    }
+    
+    /**
+     * Tests canceling the only waiting student.
+     * The deadline clears and the queue can be reused.
+     */
+    @Test
+    public void testCancelOnlyStudentAndRejoin() {
+        ReHomeModel model = new ReHomeModel(1000L);
+        int id = model.addItem("Lamp", "", "");
+    
+        model.joinWaitlist(id, "Liam", 10000L);
+    
+        assertTrue(model.cancelWaitlist(id, "Liam", 10500L));
+    
+        assertNull(model.peekNext(id));
+        assertEquals(0L,
+            model.getItemSnapshot(id).getOfferDeadlineMillis());
+    
+        model.joinWaitlist(id, "Luc", 10600L);
+    
+        assertEquals("Luc", model.peekNext(id));
+        assertEquals(11600L,
+            model.getItemSnapshot(id).getOfferDeadlineMillis());
+    }
+    
+    /**
+     * Tests canceling a name that is not on the waitlist.
+     * The queue and deadline must remain unchanged.
+     */
+    @Test
+    public void testCancelMissingAndEmptyWaitlist() {
+        ReHomeModel model = new ReHomeModel(1000L);
+        int id = model.addItem("Lamp", "", "");
+    
+        assertFalse(model.cancelWaitlist(
+            id, "Missing", 10000L));
+    
+        model.joinWaitlist(id, "Liam", 10000L);
+    
+        assertFalse(model.cancelWaitlist(
+            id, "Luc", 10100L));
+    
+        assertEquals(
+            Arrays.asList("Liam"),
+            model.getItemSnapshot(id).getWaitingNames());
+    
+        assertEquals(11000L,
+            model.getItemSnapshot(id).getOfferDeadlineMillis());
+    }
+    
+    /**
+     * Tests invalid cancellation arguments.
+     * Errors must not modify the existing waitlist.
+     */
+    @Test
+    public void testCancelInvalidArguments() {
+        ReHomeModel model = new ReHomeModel(1000L);
+        int id = model.addItem("Lamp", "", "");
+    
+        model.joinWaitlist(id, "Liam", 10000L);
+    
+        String[] invalidNames = {
+            "",
+            "   ",
+            null,
+            repeat('x', 61),
+            "Luc\nOther",
+            "Bad\tName"
+        };
+    
+        for (String name : invalidNames) {
+            assertThrows(
+                IllegalArgumentException.class,
+                () -> model.cancelWaitlist(id, name, 10500L));
+        }
+    
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> model.cancelWaitlist(id, "Liam", -1L));
+    
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> model.cancelWaitlist(999, "Liam", 10500L));
+    
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> model.cancelWaitlist(0, "Liam", 10500L));
+    
+        assertEquals(
+            Arrays.asList("Liam"),
+            model.getItemSnapshot(id).getWaitingNames());
+    
+        assertEquals(11000L,
+            model.getItemSnapshot(id).getOfferDeadlineMillis());
+    }
+    
+    /**
+     * Tests cancellation after a student's offer expired.
+     * An expired student cannot remove the next student.
+     */
+    @Test
+    public void testCancelAfterExpiration() {
+        ReHomeModel model = new ReHomeModel(1000L);
+        int id = model.addItem("Lamp", "", "");
+    
+        model.joinWaitlist(id, "Liam", 10000L);
+        model.joinWaitlist(id, "Luc", 10001L);
+    
+        assertFalse(model.cancelWaitlist(
+            id, "Liam", 11000L));
+    
+        assertEquals("Luc", model.peekNext(id));
+    
+        assertEquals(
+            Arrays.asList("Luc"),
+            model.getItemSnapshot(id).getWaitingNames());
+    
+        assertEquals(12000L,
+            model.getItemSnapshot(id).getOfferDeadlineMillis());
+    }
+    
+    /**
+     * Tests that canceling a request on one item
+     * does not affect another item's waitlist.
+     */
+    @Test
+    public void testCancelIndependentListings() {
+        ReHomeModel model = new ReHomeModel(1000L);
+    
+        int lamp = model.addItem("Lamp", "", "");
+        int book = model.addItem("Book", "", "");
+    
+        model.joinWaitlist(lamp, "Liam", 10000L);
+        model.joinWaitlist(lamp, "Luc", 10001L);
+        model.joinWaitlist(book, "Luc", 10000L);
+    
+        assertTrue(model.cancelWaitlist(
+            lamp, "Luc", 10500L));
+    
+        assertEquals(
+            Arrays.asList("Liam"),
+            model.getItemSnapshot(lamp).getWaitingNames());
+    
+        assertEquals(
+            Arrays.asList("Luc"),
+            model.getItemSnapshot(book).getWaitingNames());
+    }
+    
+    /**
+     * Tests that cancellation is rejected after an item
+     * has been claimed, without modifying its queue.
+     */
+    @Test
+    public void testCancelClaimedItem() {
+        ReHomeModel model = new ReHomeModel(1000L);
+        int id = model.addItem("Lamp", "", "");
+    
+        model.joinWaitlist(id, "Liam", 10000L);
+        model.joinWaitlist(id, "Luc", 10001L);
+    
+        model.claimItem(id, "Liam", 10500L);
+    
+        assertThrows(
+            IllegalStateException.class,
+            () -> model.cancelWaitlist(id, "Luc", 10600L));
+    
+        assertTrue(model.getItemSnapshot(id).isClaimed());
+    
+        assertEquals(
+            Arrays.asList("Liam", "Luc"),
+            model.getItemSnapshot(id).getWaitingNames());
+    }
+
+    
 }
