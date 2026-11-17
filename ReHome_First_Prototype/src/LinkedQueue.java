@@ -132,6 +132,62 @@ public class LinkedQueue<T>
 
 
     /**
+     * Removes the first entry equal to the supplied value without changing the
+     * order of the remaining queue entries.
+     * <p>
+     * Supports removing the head, middle, tail, or only node. If the entry is
+     * not found, the queue remains unchanged.
+     * </p>
+     *
+     * @param entry
+     *            the entry to remove
+     * @return true if the entry was removed, false if not found
+     * @throws IllegalArgumentException
+     *             if entry is null
+     */
+    public boolean remove(T entry)
+    {
+        if (entry == null)
+        {
+            throw new IllegalArgumentException("Cannot remove null.");
+        }
+
+        Node<T> previous = null;
+        Node<T> current = head;
+
+        while (current != null)
+        {
+            if (current.data.equals(entry))
+            {
+
+                if (previous == null)
+                {
+                    head = current.next;
+                }
+                else
+                {
+
+                    previous.next = current.next;
+                }
+
+                if (current == tail)
+                {
+                    tail = previous;
+                }
+
+                size--;
+                return true;
+            }
+
+            previous = current;
+            current = current.next;
+        }
+
+        return false;
+    }
+
+
+    /**
      * Determines whether the queue is empty.
      *
      * @return true if the queue contains no elements; false otherwise
