@@ -22,6 +22,11 @@ The application also includes an automatic five-minute offer timer, input valida
 
 No Maven, internet connection, database, or external account is required.
 
+
+Compiling the Project
+
+Eclipse automatically compiles the Java files when Project → Build Automatically is enabled. To compile manually, select Project → Build Project. Any compilation errors will appear in the Problems view.
+
 ### Import into Eclipse
 
 1. Download the repository as a ZIP from GitHub.
@@ -49,7 +54,7 @@ The application supports:
 6. Pass Student
 7. Claim Item
 8. Cancel Waitlist Request
-9. Quit
+0. Quit
 
 ### Run the Model Independently
 
