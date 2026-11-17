@@ -59,7 +59,7 @@ public class ConsoleView
     public int readMenuChoice()
     {
         out.println();
-        out.println("=== ReHome (First Prototype) ===");
+        out.println("=== ReHome (Second Prototype) ===");
         out.println("1. Add Item");
         out.println("2. View Available Items");
         out.println("3. Search Items");
@@ -67,6 +67,7 @@ public class ConsoleView
         out.println("5. Show Next Student");
         out.println("6. Pass Student");
         out.println("7. Claim Item");
+        out.println("8. Cancel Waitlist Request");
         out.println("0. Quit");
 
         return readNumber("Choose: ");
@@ -214,6 +215,27 @@ public class ConsoleView
         }
     }
 
+    
+
+    /**
+     * Displays the current waitlist in FIFO order.
+     *
+     * <p>The names are provided by the controller using
+     * a snapshot from the model. The view does not store
+     * or modify the actual linked queue.</p>
+     *
+     * @param names the ordered list of waiting students
+     */
+    public void showWaitlist(ArrayList<String> names) {
+        if (names.isEmpty()) {
+            out.println("Waitlist: empty");
+        }
+        else {
+            out.println("Waitlist order: "
+                + String.join(" -> ", names));
+        }
+    }
+    
 
     /**
      * Displays a normal status message.
