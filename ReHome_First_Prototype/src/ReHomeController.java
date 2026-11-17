@@ -101,12 +101,16 @@ public class ReHomeController
                         onPass(view.readItemId(), view.readExpectedFront());
                         break;
 
+
                     case 7:
                         onClaim(view.readItemId(), view.readExpectedFront());
                         break;
-
+                        
+                    case 8:
+                        onCancel(view.readItemId(), view.readStudentName());
+                        break;
                     default:
-                        view.showError("Choose a menu option from 0 to 7.");
+                        view.showError("Choose a menu option from 0 to 8.");
                         break;
                 }
             }
@@ -230,50 +234,61 @@ public class ReHomeController
     }
 
 
+
     /**
-     * Displays the student currently at the front of an item's queue. If a
-     * student is waiting, the remaining offer time is displayed in seconds.
+     * Displays the next student and the current waitlist.
      *
-     * @param itemId
-     *            the item's unique ID
+     * <p>Retrieves a fresh snapshot from the model so the
+     * view always reflects the latest queue state.
+     * The controller does not store a separate waitlist.</p>
+     *
+     * @param itemId the ID of the selected item
      */
-    public void onShowNext(int itemId)
-    {
-        try
-        {
+    public void onShowNext(int itemId) {
+        try {
             long now = System.currentTimeMillis();
-
+            
+            // Process any expired offers before displaying.
             model.expireOffers(now);
+        
+            // Get the current item information.
+            ItemSnapshot snapshot =
+                model.getItemSnapshot(itemId);
 
-            String front = model.peekNext(itemId);
-
-            if (front == null)
-            {
-                view.showNext(null, 0);
+            if (snapshot.isClaimed()) {
+                view.showError(
+                    "Item unavailable: already claimed.");
             }
-            else
-            {
-                long deadline =
-                    model.getItemSnapshot(itemId).getOfferDeadlineMillis();
+            else {
+                ArrayList<String> waitingNames =
+                    snapshot.getWaitingNames();
 
-                long millisecondsLeft = Math.max(0L, deadline - now);
-
-                long secondsLeft = millisecondsLeft / 1000L;
-
-                if (millisecondsLeft % 1000L != 0)
-                {
-                    secondsLeft++;
+                if (waitingNames.isEmpty()) {
+                    view.showNext(null, 0);
                 }
+                else {
+                    String front = waitingNames.get(0);
 
-                view.showNext(front, secondsLeft);
+                    long deadline =
+                        snapshot.getOfferDeadlineMillis();
+
+                    long millisecondsLeft =
+                        Math.max(0L, deadline - now);
+
+                    long secondsLeft =
+                        (millisecondsLeft + 999L) / 1000L;
+                    
+                    view.showNext(front, secondsLeft);
+                }
+                
+                // Display the full current wait list.
+                view.showWaitlist(waitingNames);
             }
         }
-        catch (IllegalArgumentException exception)
-        {
+        catch (IllegalArgumentException exception) {
             view.showError(exception.getMessage());
         }
-        catch (IllegalStateException exception)
-        {
+        catch (IllegalStateException exception) {
             view.showError(exception.getMessage());
         }
     }
@@ -342,6 +357,45 @@ public class ReHomeController
     }
 
 
+    /**
+     * Cancels a student's request for an item.
+     *
+     * <p>The controller passes the cancellation request to
+     * the model and displays the result. It does not directly
+     * modify the linked queue.</p>
+     *
+     * @param itemId the ID of the selected item
+     * @param studentName the name of the student canceling
+     */
+    public void onCancel(int itemId, String studentName) {
+        try {
+            boolean removed = model.cancelWaitlist(
+                itemId, studentName, System.currentTimeMillis());
+            
+            if (removed) {
+                view.showMessage(
+                    "Cancelled request for " + studentName.trim()
+                    + " from item #" + itemId + ".");
+            }
+            else {
+                view.showMessage(
+                    "That student is not waiting for item #"
+                        + itemId + ".");
+            }
+
+            // Display the updated front student and deadline.
+            onShowNext(itemId);
+        }
+        catch (IllegalArgumentException exception) {
+            view.showError(exception.getMessage());
+        }
+        catch (IllegalStateException exception) {
+            view.showError(exception.getMessage());
+        }
+    }
+
+    
+    
     /**
      * Ends the menu loop and stops the expiration timer. Calling this method
      * more than once is safe.
