@@ -335,6 +335,83 @@ public class ReHomeModel
 
 
     /**
+     * Cancels a student's request from an item's waitlist.
+     * <p>
+     * The student may be removed from the front, middle, or end of the queue.
+     * The remaining students keep their original FIFO order.
+     * </p>
+     * <p>
+     * If the first student cancels, the next student receives a new full offer
+     * window. Canceling someone in the middle or at the end does not reset the
+     * current student's deadline.
+     * </p>
+     *
+     * @param itemId
+     *            the ID of the selected item
+     * @param studentName
+     *            the student canceling their request
+     * @param nowMillis
+     *            the current time in milliseconds
+     * @return true if the student was removed, false if not found
+     * @throws IllegalArgumentException
+     *             if the item ID, name, or time is invalid
+     * @throws IllegalStateException
+     *             if the item is claimed
+     */
+    public synchronized
+        boolean
+        cancelWaitlist(int itemId, String studentName, long nowMillis)
+    {
+
+        Item item = findItem(itemId);
+
+        String cleanName = checkText(studentName, "Student name", 1, 60);
+
+        checkTime(nowMillis);
+        requireAvailable(item);
+
+        // Process offers that have already expired.
+        expireItem(item, nowMillis);
+
+        // Find the stored name without changing queue order.
+        String storedName = null;
+
+        for (String waitingName : item.waitlist.toList())
+        {
+            if (waitingName.equalsIgnoreCase(cleanName))
+            {
+                storedName = waitingName;
+                break;
+            }
+        }
+
+        // Student is not on this item's waitlist.
+        if (storedName == null)
+        {
+            return false;
+        }
+
+        // Remember whether the student is currently first.
+        boolean wasFront = item.waitlist.peek().equals(storedName);
+
+        // Remove the student using our LinkedQueue method.
+        item.waitlist.remove(storedName);
+
+        // Update the deadline when necessary.
+        if (item.waitlist.isEmpty())
+        {
+            item.offerDeadlineMillis = 0L;
+        }
+        else if (wasFront)
+        {
+            item.offerDeadlineMillis = deadlineAfter(nowMillis);
+        }
+
+        return true;
+    }
+
+
+    /**
      * Removes expired front students from all available items' waitlists. If
      * several offer windows have passed, the method can expire multiple
      * students during one call.
